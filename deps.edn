@@ -1,6 +1,7 @@
 {:paths ["src" "resources"]
 
- :deps {metosin/malli {:mvn/version "0.2.1"}
+ :deps {hashp/hashp {:mvn/version "0.2.0"}
+        metosin/malli {:mvn/version "0.2.1"}
         org.clojure/core.logic {:mvn/version "1.0.0"}
         org.clojure/clojure {:mvn/version "1.10.1"}}
 
