@@ -34,21 +34,21 @@
        (recur (conj tokens token) src))
      tokens)))
 
-(defn parse [tokens]
-  (first (parse-expr tokens)))
+(defn parse [parser tokens]
+  (first (parser tokens)))
 
-(defn parse-expr [tokens]
-  (let [[expr tokens] (parse-primary tokens)]
+(defn parse-expr-p1 [tokens]
+  (let [[expr tokens] (parse-primary parse-expr-p1 tokens)]
     (loop [left expr
            [op? & rtokens] tokens]
       (if (#{+ *} op?)
-        (let [[right tkns] (parse-primary rtokens)]
+        (let [[right tkns] (parse-primary parse-expr-p1 rtokens)]
           (recur [:BINARY op? left right] tkns))
         [left (conj rtokens op?)]))))
 
-(defn parse-primary [[token & tokens]]
+(defn parse-primary [root-parser [token & tokens]]
   (if (= token \()
-    (let [[expr tokens] (parse-expr tokens)]
+    (let [[expr tokens] (root-parser tokens)]
       [[:GROUPING expr] (rest tokens)])
     [token tokens]))
 
@@ -65,8 +65,37 @@
    (solve-p1 puzzle-input))
   ([exprs-source]
    (->> exprs-source
-        (map (comp evaluate parse scan))
+        (map (comp evaluate (partial parse parse-expr-p1) scan))
+        (apply +))))
+
+(defn parse-binary [op parser tokens]
+  (let [[expr tokens] (parser tokens)]
+    (loop [left expr
+           [op? & rtokens] tokens]
+      (if (= op? op)
+        (let [[right tkns] (parser rtokens)]
+          (recur [:BINARY op? left right] tkns))
+        [left (conj rtokens op?)]))))
+
+(declare parse-expr-p2)
+
+(defn parse-addition [tokens]
+  (parse-binary + (partial parse-primary parse-expr-p2) tokens))
+
+(defn parse-multiplication [tokens]
+  (parse-binary * parse-addition tokens))
+
+(defn parse-expr-p2 [tokens]
+  (parse-multiplication tokens))
+
+(defn solve-p2
+  ([]
+   (solve-p2 puzzle-input))
+  ([exprs-source]
+   (->> exprs-source
+        (map (comp evaluate (partial parse parse-expr-p2) scan))
         (apply +))))
 
 (comment
-  (assert (= 280014646144 (solve-p1))))
+  (assert (= 280014646144 (solve-p1)) "Part 1 solution is wrong.")
+  (assert (= 9966990988262 (solve-p2)) "Part 2 solution is wrong."))
