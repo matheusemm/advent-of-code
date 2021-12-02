@@ -22,4 +22,3 @@
         (partition 3 1)
         (map #(apply + %))
         (count-increases))))
-
