@@ -1,7 +1,7 @@
 (ns br.com.patrulleros.2021.day4
-  (:require [br.com.patrulleros.xf :as xf]
-            [clojure.string :as str]
-            [br.com.patrulleros.input :as input]))
+  (:require [br.com.patrulleros.input :as input]
+            [br.com.patrulleros.xf :as xf]
+            [clojure.string :as str]))
 
 (def example
   ["7,4,9,5,11,17,23,2,0,14,21,24,10,16,13,6,15,25,12,22,18,20,8,19,3,26,1"
@@ -24,37 +24,41 @@
    "22 11 13  6  5"
    "2  0 12  3  7"])
 
+(def mark :X)
+(def n-rows 5)
+(def n-cols 5)
+
+(defn parse-drawn-numbers
+  [[s]]
+  (mapv #(Integer/parseInt %) (str/split s #",")))
+
 (defn create-board
-  "Creates a bingo board, a map with keys `numbers` (the sequence of numbers) and `indexes` (a mapping between a board
-  number and its index, between 0 and 24)."
-  [numbers]
-  (let [ns (mapv #(Integer/parseInt %) numbers)]
-    {:numbers ns
-     :indexes (into {} (map-indexed #(vector %2 %1) ns))}))
+  [ns]
+  (let [numbers (mapv #(Integer/parseInt %) ns)]
+    {:numbers numbers
+     :indexes (into {} (map-indexed #(vector %2 %1) numbers))}))
 
 (defn parse-boards
-  "Returns a set of parsed bingo boards read from `boards-lines`."
   [[_ & boards-lines]]
-  (let [xf (comp (mapcat #(str/split % #" "))
+  (let [xf (comp (mapcat #(str/split % #"\s+"))
                  (filter (comp not str/blank?))
-                 (xf/sliding 25)
+                 (xf/sliding (* n-rows n-cols))
                  (map create-board))]
     (transduce xf conj #{} boards-lines)))
 
 (defn mark-board
   [{:keys [indexes] :as board} n]
   (if-let [idx (indexes n)]
-    (update-in board [:numbers idx] (constantly :x))
+    (update-in board [:numbers idx] (constantly mark))
     board))
 
 (defn won?
   [{:keys [numbers]}]
-  (let [some-won? (fn [groups]
-                    (some (fn [group] (every? #(= % :x) group))
-                          groups))
-        rows (partition 5 numbers)]
-    (or (some-won? rows)
-        (some-won? (apply map vector rows)))))
+  (let [marked? #(= % mark)
+        complete? (fn [rows-or-cols] (some #(every? marked? %) rows-or-cols))
+        rows (partition n-cols numbers)]
+    (or (complete? rows)
+        (complete? (apply map vector rows)))))
 
 (defn sum-unmarked
   [{:keys [numbers]}]
@@ -64,26 +68,29 @@
   ([]
    (part-1 (input/read-lines "2021/day4-input.txt")))
   ([lines]
-   (loop [[n & ns] (map #(Integer/parseInt %)
-                        (str/split (first lines) #","))
-          boards (parse-boards lines)]
-     (let [updated-boards (set (map #(mark-board % n) boards))
-           winner (first (filter won? updated-boards))]
-       (if winner
-         (* (sum-unmarked winner) n)
-         (recur ns updated-boards))))))
+   (let [drawn-numbers (parse-drawn-numbers lines)
+         boards (parse-boards lines)]
+     (reduce (fn [boards n]
+               (let [marked (map #(mark-board % n) boards)
+                     winner (first (filter won? marked))]
+                 (if winner
+                   (reduced (* (sum-unmarked winner) n))
+                   (set marked))))
+             boards
+             drawn-numbers))))
 
 (defn part-2
   ([]
    (part-2 (input/read-lines "2021/day4-input.txt")))
   ([lines]
-   (loop [[n & ns] (map #(Integer/parseInt %)
-                        (str/split (first lines) #","))
-          boards (parse-boards lines)]
-     (let [boards (set (map #(mark-board % n) boards))
-           winners (filter won? boards)
-           keep-playing (apply disj boards winners)]
-       (if (seq keep-playing)
-         (recur ns keep-playing)
-         (* (sum-unmarked (first winners)) n))))))
-
+   (let [drawn-numbers (parse-drawn-numbers lines)
+         boards (parse-boards lines)]
+     (reduce (fn [boards n]
+               (let [marked (set (map #(mark-board % n) boards))
+                     winners (filter won? marked)
+                     non-winners (apply disj marked winners)]
+                 (if (seq non-winners)
+                   non-winners
+                   (reduced (* (sum-unmarked (first winners)) n)))))
+             boards
+             drawn-numbers))))
