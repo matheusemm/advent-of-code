@@ -34,12 +34,12 @@
   ([]
    (part-1 (first (input/read-lines "2021/day6-input.txt"))))
   ([line]
-   (loop [school (simulate (parse line) 80)]
+   (let [school (simulate (parse line) 80)]
      (apply + (vals school)))))
 
 (defn part-2
   ([]
    (part-2 (first (input/read-lines "2021/day6-input.txt"))))
   ([line]
-   (loop [school (simulate (parse line) 256)]
+   (let [school (simulate (parse line) 256)]
      (apply + (vals school)))))
