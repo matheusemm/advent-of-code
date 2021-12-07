@@ -6,8 +6,7 @@
   [positions-line]
   (->> (str/split positions-line #",")
        (map #(Integer/parseInt %))
-       (group-by identity)
-       (map (fn [[k v]] [k (count v)]))
+       (frequencies)
        (into (sorted-map))))
 
 (defn solve
